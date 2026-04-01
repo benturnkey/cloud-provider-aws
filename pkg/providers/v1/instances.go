@@ -57,6 +57,32 @@ func (i InstanceID) awsString() *string {
 //   - <awsInstanceId>
 type KubernetesInstanceID string
 
+// Region extracts the AWS region from the provider ID when it includes an AZ token.
+// It returns an empty string when the provider ID has no zone/region component.
+func (name KubernetesInstanceID) Region() (string, error) {
+	s := string(name)
+
+	if !strings.HasPrefix(s, "aws://") {
+		// Assume a bare aws instance id (i-1234...)
+		// Build a URL with an empty host (AZ)
+		s = "aws://" + "/" + "/" + s
+	}
+	url, err := url.Parse(s)
+	if err != nil {
+		return "", fmt.Errorf("Invalid instance name (%s): %v", name, err)
+	}
+	if url.Scheme != "aws" {
+		return "", fmt.Errorf("Invalid scheme for AWS instance (%s)", name)
+	}
+
+	tokens := strings.Split(strings.Trim(url.Path, "/"), "/")
+	if len(tokens) < 2 {
+		return "", nil
+	}
+
+	return azToRegion(tokens[0])
+}
+
 // MapToAWSInstanceID extracts the InstanceID from the KubernetesInstanceID
 func (name KubernetesInstanceID) MapToAWSInstanceID() (InstanceID, error) {
 	s := string(name)

@@ -45,9 +45,34 @@ func (c *Cloud) getProviderID(ctx context.Context, node *v1.Node) (string, error
 	return c.ProviderName() + "://" + instanceID, nil
 }
 
+func (c *Cloud) isNodeManagedInCurrentRegion(node *v1.Node) (bool, error) {
+	if c.region == "" || node.Spec.ProviderID == "" {
+		return true, nil
+	}
+
+	providerRegion, err := KubernetesInstanceID(node.Spec.ProviderID).Region()
+	if err != nil {
+		return true, nil
+	}
+	if providerRegion == "" {
+		return true, nil
+	}
+
+	return providerRegion == c.region, nil
+}
+
 // InstanceExists returns true if the instance for the given node exists according to the cloud provider.
 // Use the node.name or node.spec.providerID field to find the node in the cloud provider.
 func (c *Cloud) InstanceExists(ctx context.Context, node *v1.Node) (bool, error) {
+	managedInRegion, err := c.isNodeManagedInCurrentRegion(node)
+	if err != nil {
+		return false, err
+	}
+	if !managedInRegion {
+		klog.V(2).Infof("Skipping InstanceExists for node %s with providerID %q outside configured region %q", node.Name, node.Spec.ProviderID, c.region)
+		return true, nil
+	}
+
 	providerID, err := c.getProviderID(ctx, node)
 	if err != nil {
 		return false, err
@@ -59,6 +84,15 @@ func (c *Cloud) InstanceExists(ctx context.Context, node *v1.Node) (bool, error)
 // InstanceShutdown returns true if the instance is shutdown according to the cloud provider.
 // Use the node.name or node.spec.providerID field to find the node in the cloud provider.
 func (c *Cloud) InstanceShutdown(ctx context.Context, node *v1.Node) (bool, error) {
+	managedInRegion, err := c.isNodeManagedInCurrentRegion(node)
+	if err != nil {
+		return false, err
+	}
+	if !managedInRegion {
+		klog.V(2).Infof("Skipping InstanceShutdown for node %s with providerID %q outside configured region %q", node.Name, node.Spec.ProviderID, c.region)
+		return false, nil
+	}
+
 	providerID, err := c.getProviderID(ctx, node)
 	if err != nil {
 		return false, err
