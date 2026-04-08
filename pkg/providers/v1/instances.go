@@ -63,9 +63,7 @@ func (name KubernetesInstanceID) Region() (string, error) {
 	s := string(name)
 
 	if !strings.HasPrefix(s, "aws://") {
-		// Assume a bare aws instance id (i-1234...)
-		// Build a URL with an empty host (AZ)
-		s = "aws://" + "/" + "/" + s
+		return "", nil
 	}
 	url, err := url.Parse(s)
 	if err != nil {
