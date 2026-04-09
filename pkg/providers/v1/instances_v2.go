@@ -72,13 +72,12 @@ func (c *Cloud) InstanceExists(ctx context.Context, node *v1.Node) (bool, error)
 		klog.V(2).Infof("Skipping InstanceExists for node %s with providerID %q outside configured region %q", node.Name, node.Spec.ProviderID, c.region)
 		return true, nil
 	}
-
-	providerID, err := c.getProviderID(ctx, node)
-	if err != nil {
-		return false, err
+	if node.Spec.ProviderID == "" {
+		klog.V(2).Infof("Skipping InstanceExists for node %s because spec.providerID is not set", node.Name)
+		return true, nil
 	}
 
-	return c.InstanceExistsByProviderID(ctx, providerID)
+	return c.InstanceExistsByProviderID(ctx, node.Spec.ProviderID)
 }
 
 // InstanceShutdown returns true if the instance is shutdown according to the cloud provider.
@@ -92,13 +91,12 @@ func (c *Cloud) InstanceShutdown(ctx context.Context, node *v1.Node) (bool, erro
 		klog.V(2).Infof("Skipping InstanceShutdown for node %s with providerID %q outside configured region %q", node.Name, node.Spec.ProviderID, c.region)
 		return false, nil
 	}
-
-	providerID, err := c.getProviderID(ctx, node)
-	if err != nil {
-		return false, err
+	if node.Spec.ProviderID == "" {
+		klog.V(2).Infof("Skipping InstanceShutdown for node %s because spec.providerID is not set", node.Name)
+		return false, nil
 	}
 
-	return c.InstanceShutdownByProviderID(ctx, providerID)
+	return c.InstanceShutdownByProviderID(ctx, node.Spec.ProviderID)
 }
 
 func (c *Cloud) getAdditionalLabels(ctx context.Context, zoneName string, instanceID string, instanceType string,

@@ -185,6 +185,21 @@ func TestInstanceExistsSkipsDifferentRegionProviderID(t *testing.T) {
 	mockedEC2API.AssertNumberOfCalls(t, "DescribeInstances", 0)
 }
 
+func TestInstanceExistsSkipsWhenProviderIDNotSet(t *testing.T) {
+	c, mockedEC2API := getCloudWithMockedDescribeInstancesAndAPI(true, ec2types.InstanceStateNameRunning, "i-abc")
+	c.region = "us-west-2"
+
+	result, err := c.InstanceExists(context.TODO(), &v1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "new-node-without-provider-id",
+		},
+	})
+
+	assert.NoError(t, err)
+	assert.True(t, result)
+	mockedEC2API.AssertNumberOfCalls(t, "DescribeInstances", 0)
+}
+
 func TestInstanceShutdown(t *testing.T) {
 	for _, tc := range []struct {
 		name             string
@@ -240,6 +255,21 @@ func TestInstanceShutdownSkipsDifferentRegionProviderID(t *testing.T) {
 		},
 		Spec: v1.NodeSpec{
 			ProviderID: "aws:///us-east-1c/1abc-2def/i-abc",
+		},
+	})
+
+	assert.NoError(t, err)
+	assert.False(t, result)
+	mockedEC2API.AssertNumberOfCalls(t, "DescribeInstances", 0)
+}
+
+func TestInstanceShutdownSkipsWhenProviderIDNotSet(t *testing.T) {
+	c, mockedEC2API := getCloudWithMockedDescribeInstancesAndAPI(true, ec2types.InstanceStateNameStopped, "i-abc")
+	c.region = "us-west-2"
+
+	result, err := c.InstanceShutdown(context.TODO(), &v1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "new-node-without-provider-id",
 		},
 	})
 
